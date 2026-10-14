@@ -1,0 +1,26 @@
+---
+name: rm-schema
+description: Read the structure of the RootsMagic .rmtree database (tables, columns, indexes, row counts, views, triggers). Read-only. Use before writing any query or script against the tree file.
+argument-hint: "[path-to-rmtree] [table ...]"
+allowed-tools: Bash(mise exec -- python ${CLAUDE_PROJECT_DIR}/scripts/schema.py *)
+---
+
+Show the database structure. The script opens the file read-only and registers a
+stand-in for RootsMagic's RMNOCASE collation (case-insensitive compare).
+
+Arguments: $ARGUMENTS
+- First argument: path to the .rmtree file. If none is given, use the single
+  `*.rmtree` file in the project root; if there is not exactly one, ask for the path.
+- Further arguments: table names to limit the output to (case-insensitive).
+
+Run, from the project root:
+
+```bash
+mise exec -- python ${CLAUDE_PROJECT_DIR}/scripts/schema.py "<path>" [TABLE ...]
+```
+
+With no table names, the script writes the full report to
+`tmp/output/<YYYYMMDD_HHMMSS>_schema.txt` and prints that path; read the file
+from there. With table names, it prints the report directly.
+
+Report the output as-is. Do not change the database.
