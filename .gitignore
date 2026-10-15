@@ -3,3 +3,9 @@ tmp/
 
 # RootsMagic database files
 *.rmtree
+
+# Local settings (may name family folders)
+config.toml
+
+# Working notes with real names
+notes/

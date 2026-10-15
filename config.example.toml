@@ -1,0 +1,41 @@
+# Settings for scripts/check.py.
+# Copy to config.toml (git-ignored) and edit; check.py uses config.toml if it
+# exists, otherwise this file.
+
+# Folder holding the scans, as Windows sees it.
+scan_root = 'H:\My Drive\Records'
+
+# Top-level folders under scan_root that do not hold source scans.
+not_scan_folders = [
+    "Unsorted",
+    "Research Logs",
+    "Family Data Sheet",
+    "Info",
+    "Maps",
+    "House",
+    "Family Trees",
+    "Photos",
+]
+
+# Subfolders anywhere under scan_root whose files are left unattached on purpose.
+skip_subfolders = ["unsure"]
+
+# File types counted as scans.
+scan_extensions = [".jpg", ".jpeg", ".pdf", ".tif", ".tiff", ".png", ".gif", ".webp"]
+
+# Fact types normally dated after the person's death.
+after_death_facts = [
+    "Burial",
+    "Grave",
+    "Will",
+    "Will - Administration",
+    "Newspaper Article",
+    "Death Register",
+    "Death Certificate - UK",
+    "Death Certificate - US",
+]
+
+# Age limits (years) for parent and marriage checks.
+min_parent_age = 13
+max_mother_age = 50
+min_marriage_age = 14
