@@ -1,2 +1,6 @@
 [tools]
 python = "3.14"
+
+[env]
+# Scripts live in subfolders of scripts/ and import the shared scripts/rmutils.py.
+PYTHONPATH = "{{config_root}}/scripts"

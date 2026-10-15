@@ -3,14 +3,14 @@
 Opens the file read-only. One line per person: PersonID, Sex code (raw),
 primary name, and the BirthYear/DeathYear stored on the name row.
 Codes and years are shown as stored; nothing is decoded.
-Writes the list to tmp/output/<timestamp>_people.txt.
+Writes the list to tmp/output/general/<timestamp>_people.txt.
 
 Usage: python people.py PATH_TO_RMTREE
 """
 
 import sys
 
-from rmutils import connect_readonly, db_path_arg, output_file
+from rmutils import connect_readonly, db_path_arg, full_name, output_file
 
 QUERY = """
 SELECT p.PersonID, p.Sex,
@@ -20,14 +20,6 @@ FROM PersonTable p
 LEFT JOIN NameTable n ON n.OwnerID = p.PersonID AND n.IsPrimary = 1
 ORDER BY n.Surname COLLATE RMNOCASE, n.Given COLLATE RMNOCASE, p.PersonID
 """
-
-
-def full_name(surname, given, prefix, suffix) -> str:
-    parts = [prefix, given, surname]
-    name = " ".join(p for p in parts if p)
-    if suffix:
-        name += f", {suffix}"
-    return name or "(no primary name)"
 
 
 def year(value) -> str:
