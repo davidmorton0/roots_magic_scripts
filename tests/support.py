@@ -10,7 +10,10 @@ from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
+# rmutils.py sits in scripts/; the scripts themselves sit in its subfolders.
+for folder in [SCRIPTS, *sorted(p for p in SCRIPTS.iterdir() if p.is_dir() and p.name != "__pycache__")]:
+    sys.path.insert(0, str(folder))
 
 import rmutils  # noqa: E402
 
@@ -89,5 +92,5 @@ class ScriptTestCase(unittest.TestCase):
             code = main()
         return code, out.getvalue()
 
-    def output_path(self, name: str) -> Path:
-        return self.output_dir / f"{FIXED_STAMP}_{name}.txt"
+    def output_path(self, name: str, folder: str = "general") -> Path:
+        return self.output_dir / folder / f"{FIXED_STAMP}_{name}.txt"

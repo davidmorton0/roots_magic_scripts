@@ -4,7 +4,7 @@ Opens the file read-only. Lists every table with its columns, indexes
 and row count, plus views and triggers.
 
 With no TABLE arguments the full report is written to
-tmp/output/<timestamp>_schema.txt; with TABLE arguments it is printed.
+tmp/output/general/<timestamp>_schema.txt; with TABLE arguments it is printed.
 
 Usage: python schema.py PATH_TO_RMTREE [TABLE ...]
 """
