@@ -1,6 +1,7 @@
-"""Write quarter-only Birth dates as "before" the end of the registration quarter.
+"""Write quarter-only Birth (or Death) dates as "before" the end of the registration quarter.
 
-For each Birth event cited by the birth index source (default 583) whose date
+For each Birth event (--fact 2: Death event) cited by the index source
+(default 583, the birth index; e.g. 589 for the death index) whose date
 says no more than the registration quarter in that citation (a range or
 "between" over the quarter's first and last months, with or without "about"),
 set it to "before" the month after the quarter: Jan-Mar 1886 -> before April
@@ -13,11 +14,13 @@ SortDate comes from rmutils.sort_date. Where the new date string already
 exists elsewhere, its SortDate is used instead and any difference is reported.
 
 Dry run by default: writes the proposed changes to
-tmp/output/birth_register/<timestamp>_birth_dates_before.txt and changes nothing.
+tmp/output/<folder>/<timestamp>_birth_dates_before.txt (--folder, default
+birth_register) and changes nothing.
 --apply writes them in one transaction. RootsMagic must be closed, and the
 file must be a working copy.
 
-Usage: python birth_dates_before.py PATH_TO_RMTREE [--source ID] [--apply]
+Usage: python birth_dates_before.py PATH_TO_RMTREE [--source ID] [--fact ID]
+           [--folder NAME] [--apply]
 """
 
 import argparse
@@ -39,8 +42,9 @@ from rmutils import (
 DEFAULT_SOURCE = 583
 OWNER_PERSON, OWNER_EVENT = 0, 2
 FACT_BIRTH = 1
+FACT_NAMES = {1: "Birth", 2: "Death"}
 QUARTER_RANGES = ("D-", "DR")
-CITING = re.compile(r"Births registered in (?P<first>\w+), .* (?P<year>\d{4})$")
+CITING = re.compile(r"(?:Births|Deaths) registered in (?P<first>\w+), .* (?P<year>\d{4})$")
 FIRST_MONTH = {"January": 1, "April": 4, "July": 7, "October": 10}
 DATE_TABLES = ("EventTable", "MultimediaTable")
 
@@ -93,7 +97,7 @@ def known_sort_dates(conn) -> dict[str, int]:
     return known
 
 
-def build_changes(conn, source_id: int) -> list[Change]:
+def build_changes(conn, source_id: int, fact: int = FACT_BIRTH) -> list[Change]:
     known = known_sort_dates(conn)
     quarters: dict[int, set] = {}
     events = {}
@@ -103,7 +107,7 @@ def build_changes(conn, source_id: int) -> list[Change]:
            JOIN CitationTable c ON c.CitationID = cl.CitationID
            WHERE c.SourceID = ? AND e.EventType = ? AND e.OwnerType = ?
            ORDER BY e.EventID""",
-        (OWNER_EVENT, source_id, FACT_BIRTH, OWNER_PERSON),
+        (OWNER_EVENT, source_id, fact, OWNER_PERSON),
     ):
         events[eid] = (owner, date or "")
         quarter = quarter_of(read_fields(blob).get("Citing", ""))
@@ -129,10 +133,10 @@ def build_changes(conn, source_id: int) -> list[Change]:
     return changes
 
 
-def write_report(changes: list[Change], names: dict[int, str]) -> None:
+def write_report(changes: list[Change], names: dict[int, str], fact_name: str = "Birth") -> None:
     skipped = [c for c in changes if c.skip]
     noted = [c for c in changes if c.note]
-    print(f"Quarter-only Birth dates: {len(changes)}; change {len(changes) - len(skipped)};"
+    print(f"Quarter-only {fact_name} dates: {len(changes)}; change {len(changes) - len(skipped)};"
           f" left alone {len(skipped)}; SortDate differs from computed {len(noted)}")
     if skipped:
         print("\n== Left alone")
@@ -180,24 +184,28 @@ def main() -> int:
         return 2
     parser = argparse.ArgumentParser(prog="birth_dates_before.py PATH_TO_RMTREE")
     parser.add_argument("--source", type=int, default=DEFAULT_SOURCE)
+    parser.add_argument("--fact", type=int, default=FACT_BIRTH,
+                        help="fact type whose dates change (default 1, Birth; 2 is Death)")
+    parser.add_argument("--folder", default="birth_register", help="output folder")
     parser.add_argument("--apply", action="store_true", help="write the changes")
     args = parser.parse_args(sys.argv[2:])
+    fact_name = FACT_NAMES.get(args.fact, f"fact {args.fact}")
 
     conn = connect_readonly(path)
     try:
-        changes = build_changes(conn, args.source)
+        changes = build_changes(conn, args.source, args.fact)
         names = person_names(conn)
     finally:
         conn.close()
 
     to_change = sum(1 for c in changes if not c.skip)
-    with output_file("birth_dates_before", "birth_register"):
-        write_report(changes, names)
-    print(f"{to_change} Birth dates to change; {len(changes) - to_change} left alone")
+    with output_file("birth_dates_before", args.folder):
+        write_report(changes, names, fact_name)
+    print(f"{to_change} {fact_name} dates to change; {len(changes) - to_change} left alone")
     if not args.apply:
         print("Dry run: nothing changed.")
         return 0
-    print(f"Applied: {apply(path, changes)} Birth dates changed.")
+    print(f"Applied: {apply(path, changes)} {fact_name} dates changed.")
     return 0
 
 

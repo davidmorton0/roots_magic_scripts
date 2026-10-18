@@ -184,9 +184,17 @@ def windows_file_modified(path: str) -> date | None:
     """Last-modified date of one Windows file, or None if it does not exist."""
     lines = _powershell(
         f"$f = Get-Item -LiteralPath {_ps_literal(path)} -ErrorAction SilentlyContinue; "
-        "if ($f) { $f.LastWriteTime.ToString('yyyy-MM-dd') }"
+        "if ($f) { $f.LastWriteTime.ToString('yyyy-MM-dd') }; exit 0"
     )
     return date.fromisoformat(lines[0]) if lines else None
+
+
+def rename_windows_file(path: str, new_name: str) -> None:
+    """Rename one Windows file in its folder; PowerShell's error stops the call."""
+    _powershell(
+        f"Rename-Item -LiteralPath {_ps_literal(path)} -NewName {_ps_literal(new_name)}"
+        " -ErrorAction Stop"
+    )
 
 
 def windows_thumbnail(path: str, size: int = 100) -> bytes:

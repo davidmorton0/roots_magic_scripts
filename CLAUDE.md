@@ -22,11 +22,16 @@ script that writes is a dry run unless given `--apply`.
 | **`scripts/births/`** | **Birth index (register) work** |
 | `freebmd_births.py` | FreeBMD birth index source and citations to template 6 |
 | `gro_index_citation.py` | Adds a GRO online index citation (source "Birth Register - UK - GRO") to a Birth event |
-| `move_citations_to_birth.py` | Moves citation links from birth register events to the Birth event (`--register-fact`) |
-| `remove_register_events.py` | Deletes birth register events, first copying their place to a Birth event with none |
-| `birth_dates_before.py` | Quarter-only Birth dates to "before" the month after the quarter |
+| `move_citations_to_birth.py` | Moves citation links from register events to the Birth event (`--register-fact`; `--fact 2` Death, `--source`) |
+| `remove_register_events.py` | Deletes register events, first copying their place to a Birth event with none (`--fact 2` Death; `--convert` where the person has none) |
+| `birth_dates_before.py` | Quarter-only Birth dates to "before" the month after the quarter (`--fact 2` Death) |
 | `birth_index_media.py` | Fills Caption, RefNumber, Description and Date of birth index scans |
 | `birth_index_media_dates.py` | Sets birth index scan dates to the plain registration quarter |
+| **`scripts/deaths/`** | **Death index (register) work** |
+| `freebmd_deaths.py` | FreeBMD death index source and citations to template 6; merges per-person duplicates |
+| `death_index_media.py` | Fills Caption, RefNumber, Description and Date of death index scans (FreeBMD and Ancestry) |
+| `freebmd_death_citation.py` | Adds a FreeBMD death index citation to a Death event |
+| `ancestry_deaths.py` | Ancestry death index source and citations to template 6; merges per-person duplicates |
 | **`scripts/citations/`** | **Citations** |
 | `change_citation_source.py` | Moves a citation to another source with new entry text and transcription |
 | `correct_entry_page.py` | Corrects an index entry's page in a citation and its scans |
@@ -34,14 +39,17 @@ script that writes is a dry run unless given `--apply`.
 | `merge_duplicate_citations.py` | Merges citations of the same entry cited twice on one record |
 | `resolve_possible_entries.py` | Keeps one of two possible index citations, deletes the other |
 | `set_citation_note.py` | Sets citation notes (Comments) |
-| `set_citation_quality.py` | Sets the quality of unassessed citation links |
+| `set_citation_quality.py` | Sets the quality of unassessed citation links (`--fact`, `--item` filters) |
+| `link_citations_to_fact.py` | Links a source's citations to another fact (e.g. Birth) of the same person |
 | `set_citation_text.py` | Sets transcriptions (ActualText) where there are none |
 | **`scripts/sources/`** | **Sources** |
 | `delete_source.py` | Deletes a source with no citations or attachments |
 | `rename_source.py` | Renames a source |
+| `set_source_text.py` | Sets a source's text (description of the source) |
 | `split_source.py` | Moves matching citations to another source, existing or new |
 | **`scripts/media/`** | **Media** |
 | `attach_scan.py` | Attaches a scan file to a citation, with thumbnail and access date |
+| `rename_scan.py` | Renames a scan file on the drive and in the media rows that use it |
 | **`scripts/tasks/`** | **RootsMagic tasks** |
 | `create_task.py` | Creates a task linked to a person, as RootsMagic 12 stores one |
 | `config.example.toml` | Check settings (scan folder, skipped folders, age limits); copy to git-ignored `config.toml` |
@@ -49,7 +57,7 @@ script that writes is a dry run unless given `--apply`.
 | `.claude/skills/rm-schema/` | Skill that runs `schema.py` |
 | `.claude/skills/rm-check/` | Skill that runs `check.py` |
 | `mise.toml` | Python version; puts `scripts/` on `PYTHONPATH` so scripts in subfolders can import `rmutils` |
-| `tmp/output/` | Script output (git-ignored): `general/` for checks and listings, `birth_register/` for the birth index work |
+| `tmp/output/` | Script output (git-ignored): `general/` for checks and listings, `birth_register/` for the birth index work, `death_register/` for the death index work |
 | `notes/one_off/` | Applied one-off scripts that hold real names (Ancestry and FamilySearch birth index changes), kept out of git |
 | `notes/birth_register_issues.md` | Birth register issues (IDs BR-n), with real names (git-ignored); open ones are also RootsMagic tasks |
 
@@ -86,8 +94,9 @@ changes made since. Scripts and checks use the working copy
 - RootsMagic must be closed while a script touches the file.
 - Read-only first: inspect the schema and existing rows before writing.
 - Every write script needs a dry-run mode that lists the proposed changes, and
-  runs in a transaction so it rolls back on error. Show the dry run and wait for
-  approval before writing.
+  runs in a transaction so it rolls back on error. Check the dry run and continue
+  to the writing step if there were no issues. If there were issues then report
+  and wait for further instructions.
 - After changes, the user opens the copy in RootsMagic, runs its database tools
   (including rebuild indexes), and checks results before replacing the real file.
 

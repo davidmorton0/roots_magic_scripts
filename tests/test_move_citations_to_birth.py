@@ -81,13 +81,13 @@ class MoveCitationsToBirthMainTest(ScriptTestCase):
         code, out = self.run_main(move_citations_to_birth.main, str(self.db))
 
         self.assertEqual(code, 0)
-        self.assertIn("6 citation links; 3 to move; 3 not moved\nDry run: nothing changed.", out)
+        self.assertIn("6 citation links; 3 to move; 1 to delete; 2 not moved\nDry run: nothing changed.", out)
         self.assertEqual(self.db.read_bytes(), before)
         text = self.output_path("move_citations_to_birth", "birth_register").read_text(encoding="utf-8")
         for line in [
             "   C12 Albert Brown, Jr [P3]: person has no Birth event",
             "   C13 (no primary name) [P4]: person has 2 primary Birth events",
-            "   C14 John smith [P1]: Birth event E2 already has this citation",
+            "   C14 John smith [P1]: E1 (already on E2)",
             "   C11 Dr Mary Brown [P2]: Birth date is after the registration quarter"
             " (Birth D.+18870000..+00000000.., register D-+18860100..+18860300..)",
             "   C10 John smith [P1]: E1 D-+18860100..+18860300.. -> E2 D.+18860214..+00000000..",
@@ -98,7 +98,7 @@ class MoveCitationsToBirthMainTest(ScriptTestCase):
         code, out = self.run_main(move_citations_to_birth.main, str(self.db), "--apply")
 
         self.assertEqual(code, 0)
-        self.assertIn("Applied: 3 citation links moved.", out)
+        self.assertIn("Applied: 4 citation links moved or deleted.", out)
         self.assertEqual(
             self.links(),
             [
@@ -106,11 +106,29 @@ class MoveCitationsToBirthMainTest(ScriptTestCase):
                 (101, 11, 2, 4, "~~~"),
                 (102, 12, 2, 5, "~~~"),
                 (103, 13, 2, 6, "~~~"),
-                (104, 14, 2, 1, "~~~"),
                 (105, 14, 2, 2, "~~~"),
                 (106, 15, 2, 2, "~~"),
             ],
         )
+
+    def test_source_and_fact_options(self):
+        conn = sqlite3.connect(self.db)
+        # person 3 gets a Death event dated in the quarter; citation 12 cites deaths
+        conn.execute("INSERT INTO EventTable VALUES (9, 2, 0, 3, 1, 'D.+18860305..+00000000..')")
+        conn.execute("UPDATE CitationTable SET Fields = ? WHERE CitationID = 12", (fields(
+            "General Register Office, Deaths registered in January, February, and March 1886"),))
+        conn.commit()
+        conn.close()
+        code, out = self.run_main(
+            move_citations_to_birth.main, str(self.db), "--fact", "2", "--source", "583",
+            "--folder", "death_register", "--apply")
+
+        self.assertEqual(code, 0)
+        self.assertIn("5 citation links; 1 to move; 0 to delete; 4 not moved", out)
+        text = self.output_path("move_citations_to_birth", "death_register").read_text(encoding="utf-8")
+        self.assertIn("   C10 John smith [P1]: person has no Death event\n", text)
+        self.assertIn((102, 12, 2, 9, "~~~"), self.links())
+        self.assertIn((106, 15, 2, 1, "~~"), self.links())
 
     def test_no_arguments_prints_usage(self):
         code, out = self.run_main(move_citations_to_birth.main)

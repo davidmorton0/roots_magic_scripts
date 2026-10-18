@@ -112,6 +112,24 @@ class BirthDatesBeforeMainTest(ScriptTestCase):
         self.run_main(birth_dates_before.main, str(self.db), "--apply")
         self.assertEqual(self.events()[1], (2, "DB+18910100..+00000000..", 42))
 
+    def test_death_fact(self):
+        conn = sqlite3.connect(self.db)
+        conn.execute("INSERT INTO EventTable VALUES (6, 2, 0, 2, 'D-+19040700.A+19040900..', 6, 1.0)")
+        citing = "General Register Office, Deaths registered in July, August, and September 1904"
+        conn.execute("INSERT INTO CitationTable VALUES (15, 589, ?)", (
+            f"<Root><Fields><Field><Name>Citing</Name><Value>{citing}</Value></Field></Fields></Root>"
+            .encode("utf-8"),))
+        conn.execute("INSERT INTO CitationLinkTable (CitationID, OwnerType, OwnerID) VALUES (15, 2, 6)")
+        conn.commit()
+        conn.close()
+        code, out = self.run_main(birth_dates_before.main, str(self.db), "--source", "589",
+                                  "--fact", "2", "--folder", "death_register", "--apply")
+
+        self.assertEqual(code, 0)
+        self.assertIn("1 Death dates to change; 0 left alone", out)
+        self.assertTrue(self.output_path("birth_dates_before", "death_register").is_file())
+        self.assertEqual(self.events()[5], (6, "DB+19041000..+00000000..", sort_date(1904, 10) - 12))
+
     def test_no_arguments_prints_usage(self):
         code, out = self.run_main(birth_dates_before.main)
         self.assertEqual(code, 2)
