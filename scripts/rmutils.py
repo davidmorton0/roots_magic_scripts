@@ -74,6 +74,7 @@ def sort_date(rm_date: str) -> int | None:
     Fitted to every date in the tree (2026-10-15), not documented:
       single  D.+YYYYMMDD..+00000000..   first + 17178820620  (1,316 dates)
       before  DB+YYYYMMDD..+00000000..   single - 12          (one RootsMagic example)
+      after   DA+YYYYMMDD..+00000000..   single + 1047571     (one RootsMagic example, 2026-10-22)
       range   D-+YYYYMMDD..+YYYYMMDD..   first + second + 21  (363 dates)
       between DR+YYYYMMDD..+YYYYMMDD..   first + second + 15  (157 dates)
     first = (Y+10000)<<49 | M<<45 | D<<39; second = (Y+10000)<<20 | M<<16 | D<<10.
@@ -91,8 +92,8 @@ def sort_date(rm_date: str) -> int | None:
     first = ((y1 + 10000) << 49) | (m1 << 45) | (d1 << 39)
     second = ((y2 + 10000) << 20) | (m2 << 16) | (d2 << 10)
     kind = rm_date[1]
-    if kind in ".B" and b == "00000000":
-        return first + 17178820620 - (12 if kind == "B" else 0)
+    if kind in ".BA" and b == "00000000":
+        return first + 17178820620 + {".": 0, "B": -12, "A": 1047571}[kind]
     if kind == "-":
         return first + second + 21
     if kind == "R":
@@ -197,6 +198,42 @@ def rename_windows_file(path: str, new_name: str) -> None:
     )
 
 
+def move_windows_file(path: str, new_path: str) -> None:
+    """Move one Windows file to another folder (created if missing); refused if new_path exists."""
+    folder = new_path.rpartition("\\")[0]
+    _powershell(
+        f"New-Item -ItemType Directory -Force -Path {_ps_literal(folder)} | Out-Null; "
+        f"if (Test-Path -LiteralPath {_ps_literal(new_path)}) {{ throw 'target exists' }}; "
+        f"Move-Item -LiteralPath {_ps_literal(path)} -Destination {_ps_literal(new_path)} -ErrorAction Stop"
+    )
+
+
+def rootsmagic_running() -> bool:
+    """True if a RootsMagic process is running on Windows."""
+    return bool(_powershell("Get-Process *RootsMagic* -ErrorAction SilentlyContinue | Select-Object -First 1 Id"))
+
+
+def windows_file_hash(path: str) -> str | None:
+    """SHA-256 of one Windows file (upper-case hex, as Get-FileHash gives), or None if missing."""
+    lines = _powershell(
+        f"if (Test-Path -LiteralPath {_ps_literal(path)}) "
+        f"{{ (Get-FileHash -LiteralPath {_ps_literal(path)} -Algorithm SHA256).Hash }}; exit 0"
+    )
+    return lines[0] if lines else None
+
+
+def copy_windows_file(source: str, target: str) -> None:
+    """Copy one file between Windows paths, overwriting; PowerShell's error stops the call."""
+    _powershell(f"Copy-Item -LiteralPath {_ps_literal(source)} -Destination {_ps_literal(target)} -Force"
+                " -ErrorAction Stop")
+
+
+def windows_path(path: Path) -> str:
+    """A WSL path as Windows sees it (\\\\wsl.localhost\\...), from wslpath."""
+    return subprocess.run(["wslpath", "-w", str(path.resolve())], capture_output=True, encoding="utf-8",
+                          check=True).stdout.strip()
+
+
 def windows_thumbnail(path: str, size: int = 100) -> bytes:
     """JPEG preview of a Windows image file, longest side `size` pixels.
 
@@ -226,20 +263,25 @@ def list_windows_files(root: str) -> list[str]:
     return _windows_file_lines(root, "$_.FullName")
 
 
-def list_windows_file_dates(root: str) -> dict[str, date]:
-    """Lower-cased full Windows path -> last-modified date, for every file under root.
+def list_windows_files_with_dates(root: str) -> list[tuple[str, date]]:
+    """(full Windows path as spelled on disk, last-modified date) for every file under root.
 
     Last-modified, not creation: creation dates show when files were copied to
     Google Drive (mostly 2020-01-19), not when they were downloaded.
     '|' separates path and date; Windows does not allow it in file names.
     """
-    dates = {}
+    files = []
     for line in _windows_file_lines(
         root, "$_.FullName + '|' + $_.LastWriteTime.ToString('yyyy-MM-dd')"
     ):
-        path, _, created = line.rpartition("|")
-        dates[path.lower()] = date.fromisoformat(created)
-    return dates
+        path, _, modified = line.rpartition("|")
+        files.append((path, date.fromisoformat(modified)))
+    return files
+
+
+def list_windows_file_dates(root: str) -> dict[str, date]:
+    """Lower-cased full Windows path -> last-modified date, for every file under root."""
+    return {path.lower(): modified for path, modified in list_windows_files_with_dates(root)}
 
 
 def load_config(path: Path | None = None) -> dict:

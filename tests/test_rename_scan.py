@@ -28,7 +28,8 @@ class RenameScanMainTest(ScriptTestCase):
         conn.commit()
         conn.close()
         self.files = {OLD.lower()}
-        for name, fake in (("windows_file_modified", self.modified), ("rename_windows_file", self.rename)):
+        for name, fake in (("windows_file_modified", self.modified), ("rename_windows_file", self.rename),
+                           ("move_windows_file", self.move)):
             patcher = mock.patch.object(rename_scan, name, side_effect=fake)
             self.addCleanup(patcher.stop)
             setattr(self, name, patcher.start())
@@ -40,12 +41,30 @@ class RenameScanMainTest(ScriptTestCase):
         self.files.remove(path.lower())
         self.files.add(f"{path.rpartition(chr(92))[0]}\\{new}".lower())
 
+    def move(self, path: str, new_path: str) -> None:
+        self.files.remove(path.lower())
+        self.files.add(new_path.lower())
+
     def media_files(self) -> list[tuple]:
         conn = sqlite3.connect(self.db)
         try:
             return conn.execute("SELECT MediaID, MediaFile FROM MultimediaTable ORDER BY MediaID").fetchall()
         finally:
             conn.close()
+
+    def test_apply_moves_file_to_another_folder(self):
+        target = "H:\\My Drive\\Records\\Deaths\\Britain\\Banns\\DOE-J-DBB-1905.jpg"
+        code, out = self.run_main(rename_scan.main, str(self.db), "--rename", OLD, target, "--apply")
+
+        self.assertEqual(code, 0, out)
+        self.move_windows_file.assert_called_once_with(OLD, target)
+        self.rename_windows_file.assert_not_called()
+        conn = sqlite3.connect(self.db)
+        try:
+            rows = conn.execute("SELECT MediaPath, MediaFile FROM MultimediaTable WHERE MediaID IN (1, 2)").fetchall()
+        finally:
+            conn.close()
+        self.assertEqual(rows, [("H:\\My Drive\\Records\\Deaths\\Britain\\Banns", "DOE-J-DBB-1905.jpg")] * 2)
 
     def test_dry_run_changes_nothing(self):
         before = self.db.read_bytes()

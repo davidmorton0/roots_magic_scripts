@@ -1,6 +1,11 @@
 [tools]
 python = "3.14"
+uv = "0.13.4"
 
 [env]
 # Scripts live in subfolders of scripts/ and import the shared scripts/rmutils.py.
 PYTHONPATH = "{{config_root}}/scripts"
+# Project dependencies (pyproject.toml, uv.lock) are installed into .venv by `uv sync`.
+_.python.venv = { path = ".venv", create = true }
+# uv uses mise's Python rather than downloading its own.
+UV_PYTHON = { value = "{{ tools.python.path }}", tools = true }

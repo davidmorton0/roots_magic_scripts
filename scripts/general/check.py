@@ -12,6 +12,7 @@ Codes used were found from existing links in the database, not documentation:
   CitationLinkTable.OwnerType  0 person, 1 family, 2 event
   EventTable.OwnerType         0 person, 1 family
   MultimediaTable.MediaType    1 image, 2 file
+  PlaceTable.PlaceType         0 place, 1 RootsMagic's temple list (not checked), 2 place detail
 Only the year of an event date is read (from "D?+YYYYMMDD..."), apart from
 showing simple exact dates as YYYY-MM-DD.
 
@@ -36,6 +37,7 @@ from rmutils import (
 
 OWNER_PERSON, OWNER_FAMILY, OWNER_EVENT, OWNER_SOURCE, OWNER_CITATION = 0, 1, 2, 3, 4
 MEDIA_IMAGE, MEDIA_FILE = 1, 2
+PLACE_TEMPLE, PLACE_DETAIL = 1, 2  # type 1: RootsMagic's own list of LDS temples ("AUCKL - Auckland ...")
 FACT_BIRTH, FACT_DEATH, FACT_CHRISTEN = 1, 2, 3
 FIRST_CUSTOM_FACT = 1000
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".tif", ".tiff", ".png", ".gif", ".webp", ".bmp"}
@@ -134,6 +136,17 @@ class Tree:
         ).fetchall()
         for _, mid, otype, oid in self.media_link_rows:
             self.media_links[mid].append((otype, oid))
+
+        self.places = conn.execute(
+            "SELECT PlaceID, PlaceType, Name, MasterID FROM PlaceTable ORDER BY PlaceID"
+        ).fetchall()
+        self.used_places = Counter()
+        for table in ("EventTable", "FANTable"):
+            for place, site in conn.execute(f"SELECT PlaceID, SiteID FROM {table}"):
+                self.used_places[place] += 1
+                self.used_places[site] += 1
+        for _, _, _, master in self.places:
+            self.used_places[master] += 1
 
         self.cited_events = {
             oid
@@ -451,6 +464,41 @@ def event_after_death(t: Tree) -> list[str]:
 
 
 # --- People ----------------------------------------------------------------
+
+
+# --- Places ------------------------------------------------------------------
+
+
+def place_key(name: str) -> list[str]:
+    """Words of a place name, ignoring case, punctuation, "the" and a final s or 's."""
+    words = re.sub(r"[^\w\s]", " ", name.casefold().replace("'s", "")).split()
+    return [w.removesuffix("s") if len(w) > 3 else w for w in words if w != "the"]
+
+
+@check("place_unused", "Places and place details used by no fact, FAN row or place detail")
+def place_unused(t: Tree) -> list[str]:
+    return [
+        f"{name} [L{pid}]" + (" (detail)" if ptype == PLACE_DETAIL else "")
+        for pid, ptype, name, _ in t.places
+        if ptype != PLACE_TEMPLE and not t.used_places.get(pid)
+    ]
+
+
+@check("place_detail_similar", "Place details under one place with near-identical names")
+def place_detail_similar(t: Tree) -> list[str]:
+    by_master = defaultdict(list)
+    for pid, ptype, name, master in t.places:
+        if ptype == PLACE_DETAIL:
+            by_master[master].append((pid, name, place_key(name)))
+    masters = {pid: name for pid, _, name, _ in t.places}
+    out = []
+    for master, details in sorted(by_master.items()):
+        for i, (pid1, name1, key1) in enumerate(details):
+            for pid2, name2, key2 in details[i + 1:]:
+                shorter, longer = sorted((key1, key2), key=len)
+                if shorter and longer[: len(shorter)] == shorter:
+                    out.append(f"{name1} [L{pid1}] / {name2} [L{pid2}] - under {masters.get(master, '?')} [L{master}]")
+    return out
 
 
 @check("person_no_name", "People with no primary name")

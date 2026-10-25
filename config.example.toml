@@ -1,13 +1,23 @@
-# Settings for scripts/check.py.
-# Copy to config.toml (git-ignored) and edit; check.py uses config.toml if it
+# Settings for scripts/check.py and other scripts.
+# Copy to config.toml (git-ignored) and edit; scripts use config.toml if it
 # exists, otherwise this file.
 
 # Folder holding the scans, as Windows sees it.
 scan_root = 'H:\My Drive\Records'
 
+# Folder where new record files are placed before they are added to the tree
+# (rm-add-record skill moves them from here to their record type's folder).
+input_folder = 'H:\My Drive\Records\Input'
+
+# Test tree, as Windows sees it, and the working copy in the project
+# (scripts/general/working_copy.py).
+test_tree = 'H:\My Drive\RootsMagic Work\Morton Tree - FreeBMD template test.rmtree'
+working_copy = "tmp/work/Morton Tree.rmtree"
+
 # Top-level folders under scan_root that do not hold source scans.
 not_scan_folders = [
     "Unsorted",
+    "Input",
     "Research Logs",
     "Family Data Sheet",
     "Info",

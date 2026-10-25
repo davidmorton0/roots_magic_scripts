@@ -16,7 +16,11 @@ CREATE TABLE FactTypeTable (FactTypeID INTEGER PRIMARY KEY, Name TEXT,
 CREATE TABLE FamilyTable (FamilyID INTEGER PRIMARY KEY, FatherID INTEGER, MotherID INTEGER);
 CREATE TABLE ChildTable (RecID INTEGER PRIMARY KEY, ChildID INTEGER, FamilyID INTEGER);
 CREATE TABLE EventTable (EventID INTEGER PRIMARY KEY, EventType INTEGER,
-    OwnerType INTEGER, OwnerID INTEGER, PlaceID INTEGER, Date TEXT, IsPrimary INTEGER);
+    OwnerType INTEGER, OwnerID INTEGER, PlaceID INTEGER, Date TEXT, IsPrimary INTEGER,
+    SiteID INTEGER DEFAULT 0);
+CREATE TABLE PlaceTable (PlaceID INTEGER PRIMARY KEY, PlaceType INTEGER, Name TEXT,
+    MasterID INTEGER);
+CREATE TABLE FANTable (FanID INTEGER PRIMARY KEY, PlaceID INTEGER, SiteID INTEGER);
 CREATE TABLE SourceTable (SourceID INTEGER PRIMARY KEY, Name TEXT);
 CREATE TABLE CitationTable (CitationID INTEGER PRIMARY KEY, SourceID INTEGER,
     CitationName TEXT);
@@ -33,7 +37,12 @@ INSERT INTO FactTypeTable VALUES
     (1006, 'Census England 1881', 1, 1), (1009, 'Census England 1911', 1, 1);
 INSERT INTO FamilyTable VALUES (1, 1, 2);
 INSERT INTO ChildTable (ChildID, FamilyID) VALUES (3, 1);
-INSERT INTO EventTable VALUES
+INSERT INTO PlaceTable VALUES
+    (1, 0, 'Testham, Exampleshire, England', 0), (2, 0, 'Unused Town, England', 0),
+    (3, 2, 'St John', 1), (4, 2, 'St John the Baptist', 1),
+    (5, 2, 'St George''s', 1), (6, 2, 'St Georges', 1), (7, 1, 'TESTX - Test Temple', 0);
+INSERT INTO FANTable VALUES (1, 1, 4);
+INSERT INTO EventTable (EventID, EventType, OwnerType, OwnerID, PlaceID, Date, IsPrimary) VALUES
     (1, 1, 0, 1, 1, 'D.+18500101..+00000000..', 1),
     (2, 2, 0, 1, 1, 'D.+19100000..+00000000..', 1),
     (3, 1, 0, 2, 0, 'D.+18600000..+00000000..', 1),
@@ -41,6 +50,7 @@ INSERT INTO EventTable VALUES
     (5, 1006, 0, 1, 1, 'D.+18910405..+00000000..', 1),
     (6, 1009, 0, 1, 1, 'D.+19110402..+00000000..', 1),
     (7, 300, 1, 1, 1, '.', 1);
+UPDATE EventTable SET SiteID = 3 WHERE EventID = 1;
 INSERT INTO SourceTable VALUES (1, 'Census'), (2, 'Unused source');
 INSERT INTO CitationTable VALUES (1, 1, 'RG11'), (2, 1, 'RG14'), (3, 1, 'Spare');
 INSERT INTO CitationLinkTable (CitationID, OwnerType, OwnerID) VALUES
@@ -81,6 +91,8 @@ EXPECTED_COUNTS = {
     "event_no_date": "1",
     "event_no_place": "1",
     "fact_year_mismatch": "1",
+    "place_unused": "3",
+    "place_detail_similar": "2",
     "date_style_unusual": "0",
     "event_before_birth": "0",
     "event_after_death": "1",
@@ -146,6 +158,10 @@ class CheckMainTest(ScriptTestCase):
             "   Albert Brown, Jr [P3] born 1855 - John smith [P1]: father aged 5",
             "   Albert Brown, Jr [P3] born 1855 - Dr Mary Brown [P2]: mother aged -5",
             "   (no primary name) [P4]",
+            "   Unused Town, England [L2]",
+            "   St Georges [L6] (detail)",
+            "   St John [L3] / St John the Baptist [L4] - under Testham, Exampleshire, England [L1]",
+            "   St George's [L5] / St Georges [L6] - under Testham, Exampleshire, England [L1]",
         ]
         for line in expected:
             self.assertIn(line + "\n", text)

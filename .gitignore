@@ -1,6 +1,9 @@
 # Script output
 tmp/
 
+# Python environment made by uv
+.venv/
+
 # RootsMagic database files
 *.rmtree
 

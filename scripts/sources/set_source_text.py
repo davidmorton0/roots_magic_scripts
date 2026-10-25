@@ -1,10 +1,11 @@
 """Set a source's text (ActualText): RootsMagic's "Source Text", a description of the source.
+With --note, set the source's note (Comments) instead.
 
 Dry run by default: prints the old and new text. --apply writes it in one
 transaction. RootsMagic must be closed, and the file must be a working copy.
 
 Usage: python set_source_text.py PATH_TO_RMTREE --text SOURCE_ID TEXT
-           [--text SOURCE_ID TEXT ...] [--apply]
+           [--text SOURCE_ID TEXT ...] [--note] [--apply]
 """
 
 import argparse
@@ -20,14 +21,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="set_source_text.py PATH_TO_RMTREE")
     parser.add_argument("--text", nargs=2, action="append", required=True,
                         metavar=("SOURCE_ID", "TEXT"))
+    parser.add_argument("--note", action="store_true", help="set the note (Comments), not the text")
     parser.add_argument("--apply", action="store_true", help="write the source texts")
     args = parser.parse_args(sys.argv[2:])
+    column = "Comments" if args.note else "ActualText"
     texts = {int(sid): text for sid, text in args.text}
 
     conn = connect_readonly(path)
     try:
         old = {sid: (name, text) for sid, name, text in conn.execute(
-            f"SELECT SourceID, Name, ActualText FROM SourceTable"
+            f"SELECT SourceID, Name, {column} FROM SourceTable"
             f" WHERE SourceID IN ({','.join('?' * len(texts))})", list(texts))}
     finally:
         conn.close()
@@ -45,7 +48,7 @@ def main() -> int:
     conn = connect_readwrite(path)
     try:
         for sid, text in texts.items():
-            conn.execute("UPDATE SourceTable SET ActualText = ?, UTCModDate = ? WHERE SourceID = ?",
+            conn.execute(f"UPDATE SourceTable SET {column} = ?, UTCModDate = ? WHERE SourceID = ?",
                          (text, stamp, sid))
         conn.commit()
     except Exception:
@@ -53,7 +56,7 @@ def main() -> int:
         raise
     finally:
         conn.close()
-    print(f"Applied: {len(texts)} source texts set.")
+    print(f"Applied: {len(texts)} source {'notes' if args.note else 'texts'} set.")
     return 0
 
 

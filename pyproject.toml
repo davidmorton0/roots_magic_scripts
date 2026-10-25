@@ -1,0 +1,10 @@
+[project]
+name = "roots-magic"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "pymupdf==2.0",
+]
+
+[tool.uv]
+required-version = "==0.13.4"
