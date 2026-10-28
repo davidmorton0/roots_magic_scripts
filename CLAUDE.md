@@ -17,72 +17,64 @@ script that writes is a dry run unless given `--apply`.
 | `scripts/rmutils.py` | Shared helpers: RMNOCASE stand-in, connections, output file, Fields XML, dates and SortDate, Windows files (list, dates, rename, move, copy, hash), RootsMagic running |
 | **`scripts/general/`** | **Read-only checks and listings** |
 | `schema.py` | Tables, columns, indexes, row counts, views, triggers |
-| `people.py` | Everyone in the tree: ID, sex code, primary name, birth/death year |
-| `check.py` | Issue checks; one `@check` function per issue (includes unused places and near-identical place details) |
 | `find_person.py` | Finds people by surname and the start of given names, including alternative names |
 | `missing_records.py` | Checklists of records still to find (birth, marriage, death indexes, censuses, 1939 Register) for the root person's family by degree of separation, one `notes/missing/missing_*.md` file per record type |
 | `working_copy.py` | `fetch` the test tree as the working copy, `push` it back (refused if RootsMagic saved the test tree since), `status`; checks RootsMagic is closed and compares hashes |
-| **`scripts/births/`** | **Birth index (register) work** |
-| `freebmd_births.py` | FreeBMD birth index source and citations to template 6 |
-| `gro_index_citation.py` | Adds a GRO online index citation (source "Birth Register - UK - GRO") to a Birth event |
-| `move_citations_to_birth.py` | Moves citation links from register events to the Birth event (`--register-fact`; `--fact 2` Death, `--source`) |
-| `remove_register_events.py` | Deletes register events, first copying their place to a Birth event with none (`--fact 2` Death; `--convert` where the person has none) |
-| `birth_dates_before.py` | Quarter-only Birth dates to "before" the month after the quarter (`--fact 2` Death) |
-| `birth_index_media.py` | Fills Caption, RefNumber, Description and Date of birth index scans |
-| `birth_index_media_dates.py` | Sets birth index scan dates to the plain registration quarter |
-| **`scripts/deaths/`** | **Death index (register) work** |
-| `freebmd_deaths.py` | FreeBMD death index source and citations to template 6; merges per-person duplicates |
-| `death_index_media.py` | Fills Caption, RefNumber, Description and Date of death index scans (FreeBMD and Ancestry) |
-| `freebmd_death_citation.py` | Adds a FreeBMD death index citation to a Death event |
-| `ancestry_deaths.py` | Ancestry death index source and citations to template 6; merges per-person duplicates |
-| **`scripts/marriages/`** | **Marriage index (register) work** |
-| `freebmd_marriages.py` | FreeBMD marriage index: one citation per partner's entry, with its scan, on the couple's Marriage |
 | **`scripts/citations/`** | **Citations** |
-| `change_citation_source.py` | Moves a citation to another source with new entry text and transcription |
-| `correct_entry_page.py` | Corrects an index entry's page in a citation and its scans |
-| `fix_name_stops.py` | Removes stray full stops after whole names in index entries |
 | `merge_duplicate_citations.py` | Merges citations of the same entry cited twice on one record |
-| `resolve_possible_entries.py` | Keeps one of two possible index citations, deletes the other |
-| `set_citation_note.py` | Sets citation notes (Comments) |
-| `set_citation_quality.py` | Sets the quality of unassessed citation links (`--fact`, `--item` filters) |
-| `link_citations_to_fact.py` | Links a source's citations to another fact (e.g. Birth) of the same person |
-| `link_citation.py` | Links one citation to one event, with a quality (for citations on more than one person) |
-| `set_citation_text.py` | Sets transcriptions (ActualText) where there are none |
-| `add_citation.py` | Adds a citation to an existing source (template citation fields or free-form Page) and links it to events, families or names |
+| `evaluate_links.py` | Flags citation links missing or not allowed for the record type (`.claude/skills/rm-evaluate-links/facts_cited.md`); names the event to link or the fact to create (read-only) |
+| `evaluate_quality.py` | Flags unrated link qualities and ratings that differ from `.claude/skills/rm-evaluate-quality/quality.md` (read-only) |
+| `evaluate_citation.py` | Fetches citations (by source, citation or all) and flags what does not fit the citation standards and forms in `.claude/skills/rm-evaluate-source/source_types.md` (read-only) |
 | `footnote_preview.py` | Prints a citation's footnote, short footnote and bibliography from its template (approximate) |
 | **`scripts/sources/`** | **Sources** |
-| `delete_source.py` | Deletes a source with no citations or attachments |
-| `rename_source.py` | Renames a source |
-| `set_source_text.py` | Sets a source's text (description of the source); `--note` sets its note (Comments) |
+| `evaluate_source.py` | Fetches sources and flags what does not fit the source standards and source-type table in `.claude/skills/rm-evaluate-source/source_types.md` (read-only) |
 | `source_inventory.py` | Lists a source with its citations, their links (fact, owner, date, place), quality and scans (read-only) |
 | `source_people.py` | Lists the people a source's citations touch, with Birth/Christen/Death, parents and marriages (read-only) |
 | `split_source.py` | Moves matching citations to another source, existing or new |
 | **`scripts/media/`** | **Media** |
-| `attach_scan.py` | Attaches a scan file to a citation, with thumbnail and access date |
-| `rename_scan.py` | Renames a scan file, or moves it to another folder, on the drive and in the media rows that use it |
-| `file_input_scan.py` | Moves a new record file from the input folder to its record type's folder under a new name; shows its access date and files of the same base name |
+| `evaluate_scans.py` | Flags scan captions, reference numbers, descriptions, dates, file names, folders, media types and shared rows against `.claude/skills/rm-evaluate-scans/scan_forms.md` (read-only) |
 | `list_scans.py` | Lists a Records folder with file dates (G16 access dates), skipping `unsure` and `Unsorted`; `--tree` shows the media rows using each file |
 | **`scripts/people/`** | **People** |
-| `rename_person.py` | Changes a person's primary given names and/or surname |
-| `add_alternative_name.py` | Adds an alternative (AKA) name to a person, cited to a citation |
-| `set_event_date.py` | Sets an event's encoded date and its SortDate |
-| `set_event_place.py` | Sets an event's place and place detail |
-| `set_event_note.py` | Sets an event's note, replacing what it holds |
+| `evaluate_record_events.py` | Says for each record event (fact 1000+) whether it is ready to delete, what to copy to its main fact first, or that it must be converted (`.claude/skills/rm-remove-record-events/record_facts.md`; read-only) |
 | **`scripts/places/`** | **Places** |
-| `rename_place.py` | Renames a place or place detail (and its sort name) |
 | `merge_places.py` | Moves every fact from one place or detail to another, then deletes the emptied one |
-| `delete_place.py` | Deletes a place or detail that nothing uses |
-| **`scripts/tasks/`** | **RootsMagic tasks** |
-| `create_task.py` | Creates a task linked to a person, as RootsMagic 12 stores one |
+| `evaluate_places.py` | Flags G21 problems: addresses in descriptions or held as places, details not under their place, the same detail twice (read-only) |
+| **`scripts/records/`** | **Generic `get`, `create`, `edit`, `delete` sub-commands per record type (dry run unless `--apply`; refuses to delete what is still used). Person, event, family and child create defaults come from the one-off scripts and match the rows in the tree, but are not yet checked against rows made by hand** |
+| `citation.py` | Citations: template fields (CitationName rebuilt), notes, text, links on create |
+| `citation_link.py` | Citation links to a person, family, event or name, with quality |
+| `source.py` | Sources: template source fields, text, note, name |
+| `media.py` | Media rows and their links to a person, event, source or citation; `get --path` finds the rows using one file. Does not touch the file itself (see `scripts/files/`) |
+| `person.py` | People, with the primary name |
+| `name.py` | Alternative names |
+| `event.py` | Events (facts) of a person or family: type, date and SortDate, place, detail |
+| `family.py` | Families and children; keeps each person's SpouseID and ParentID right |
+| `place.py` | Places and place details (sort name follows the name) |
+| `task.py` | Tasks and their links to people |
+| **`scripts/files/`** | **File operations on the Windows drive, no database** |
+| `file.py` | `list` (files and dates; `--skip` leaves out skipped and Unsorted folders), `info` (date, SHA-256), `rename`, `move`, `copy` (hashes compared); dry run unless `--apply` |
+| **`scripts/validate/`** | **Read-only validation, one script per record type (`validate_<type>.py`); output in `tmp/output/validate/`** |
+| `validate_common.py` | Shared: tree loading, check registry, runner, date form and SortDate checks |
+| `validate_source.py` | Unused sources |
+| `validate_citation.py` | Citations with no scan, unused citations |
+| `validate_citation_link.py` | Links to a missing citation or record (names included), quality not three valid characters |
+| `validate_media.py` | Scan files and media rows (`--scan-list`, `--no-scans`), date form, SortDate |
+| `validate_person.py` | Name, sex code, events, birth, connections, primary events, birth after death, ParentID and SpouseID |
+| `validate_name.py` | Missing person, blank parts, spaces, case, duplicates, date form |
+| `validate_event.py` | Citations, date, place, years against birth and death, missing owner, date form, SortDate, witnesses |
+| `validate_family.py` | One partner, parent and marriage ages, missing partner, child rows |
+| `validate_place.py` | Unused places, near-identical details |
+| `validate_task.py` | Unlinked tasks, links to a missing task or person, date form |
 | `config.example.toml` | Settings (scan folder, input folder, skipped folders, age limits, test tree and working copy paths); copy to git-ignored `config.toml` |
 | `tests/` | `unittest` tests; `support.py` builds a small fixture database |
 | `.claude/skills/rm-schema/` | Skill that runs `schema.py` |
-| `.claude/skills/rm-check/` | Skill that runs `check.py` |
+| `.claude/skills/rm-check/` | Skill that runs the `scripts/validate/validate_*.py` scripts (all, or chosen record types) |
 | `.claude/skills/rm-missing-records/` | Skill that runs `missing_records.py` for a given degree of separation |
 | `.claude/skills/rm-add-record/` | Skill that adds a found record (file in the input folder plus transcription) to the tree |
+| `.claude/skills/rm-evaluate-citation/`, `rm-evaluate-links/`, `rm-add-people/`, `rm-remove-record-events/`, `rm-evaluate-places/`, `rm-evaluate-scans/`, `rm-evaluate-quality/` | Sub-skills of rm-record-cleanup step 5, one per item: flag with the matching `evaluate_*.py`, decide, fix with `records/` and `files/`; each holds its table (drafts) |
+| `.claude/skills/rm-evaluate-source/` | Skill that evaluates sources: `evaluate_source.py` flags, decisions, fixes with `records/source.py`; holds the source standards and source-type table (`source_types.md`) |
 | `mise.toml` | Python version and uv; puts `scripts/` on `PYTHONPATH` so scripts in subfolders can import `rmutils`; activates `.venv` |
 | `pyproject.toml`, `uv.lock` | Project dependencies, managed with uv, installed into the git-ignored `.venv` (PyMuPDF: renders part of a scan PDF enlarged, to read handwriting) |
-| `tmp/output/` | Script output (git-ignored): `general/` for checks and listings, `birth_register/` for the birth index work, `death_register/` for the death index work |
+| `tmp/output/` | Script output (git-ignored): `general/` for checks and listings, `validate/` for the validation scripts, `birth_register/` for the birth index work, `death_register/` for the death index work |
 | `notes/one_off/` | Applied one-off scripts that hold real names (Ancestry and FamilySearch birth index changes), kept out of git |
 | `notes/issues/` | Issues notes per record type (`<type>_issues.md`: decisions, progress, issues; e.g. birth register IDs BR-n), with real names (git-ignored); open ones are also RootsMagic tasks |
 | `notes/missing/` | Missing-record checklists (`missing_*.md`) written by `missing_records.py` |

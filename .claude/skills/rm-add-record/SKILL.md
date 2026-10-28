@@ -37,45 +37,55 @@ record type, quality ratings). Apply them without asking; ask only what they do 
    `<SUR>-<initials>-<code>-<year>[-Q<n>]` with the first three letters of the surname in capitals
    and the given-name initials, as the existing files are named (couples and households:
    `SUR.I-SUR.I-...`), the extension unchanged.
-5. **Files of the same name.** Dry run `scripts/media/file_input_scan.py "<file>" "<target>"`: it
-   prints the access date (the file's last-modified date, read before the move, G16) and the files
-   in the target folder with the same base name.
+5. **Files of the same name.** Read the access date before the move (G16):
+   `scripts/files/file.py info "<file>"` (the last-modified date and the SHA-256 hash). List the
+   target folder, `file.py list "<folder>"`, for files with the same base name.
    - Same base name, another record (another person or entry): the existing file is renamed with
-     `-R1` (`scripts/media/rename_scan.py`, which renames it on the drive and in the media rows),
-     and the new file takes the next free number (`-R2`, `-R3`; if `-R` numbers exist already,
-     the next one).
-   - The same record (same image; compare with `rmutils.windows_file_hash`): do not add the
-     duplicate; report it and leave it in the input folder.
+     `-R1`, on the drive (`file.py rename "<old path>" NEW_NAME`) and in each media row using it
+     (`scripts/records/media.py <tree> get --path "<old path>"`, then
+     `media.py <tree> edit M --path "<new path>"`); the new file takes the next free number
+     (`-R2`, `-R3`; if `-R` numbers exist already, the next one).
+   - The same record (the same SHA-256 from `file.py info`): do not add the duplicate; report it and
+     leave it in the input folder.
    - Several pages of one record: `-P1`, `-P2` (1921 census: `-1`, `-2`, as existing).
-   Then move it: `file_input_scan.py ... --apply`.
-6. **Citation.** `scripts/citations/add_citation.py` under the record type's source (table), with
-   the source's template fields: template 6 AccessDate (from step 5, e.g. "3 June 2021"),
-   SpecificItem and Citing in the form of that source's existing citations (copy one); free-form
-   sources Page (G1, G20, G24). Transcription in the layout of the existing ones (G10, "Key: value"
-   lines). FreeBMD citations end with the FreeBMD citation link (CLAUDE.md), which the user
-   supplies. Ready-made scripts where they fit: `scripts/births/gro_index_citation.py` (GRO birth
-   index), `scripts/deaths/freebmd_death_citation.py` (FreeBMD death index).
-7. **Links and facts.** Link the citation to each fact the record supports ("Facts cited per
-   record type" in the standards) with the rating from "Quality ratings". A fact the person does
-   not have is created from the record (G8: date in RootsMagic's form with `rmutils.sort_date`,
-   place and place detail under G21); a new person named with a stated relationship is added
-   under G29/G35. Writes that no generic script covers (new facts, people, Residences with
-   addresses) go in a one-off script in `notes/one_off/` (real names), with a dry run, as in
-   step 5 of rm-record-cleanup. Census: one citation per household, cited on every member's
-   facts; the couple's Marriage under G38/G39. Disagreements with the tree get a note on the
-   event (G37); a disagreement the standards do not settle is a question for the user.
-8. **Scan.** `scripts/media/attach_scan.py <tree> <citation> "<new path>"` (fills an empty
-   AccessDate from the file date). Media details (G12, CLAUDE.md): Caption
+   Then move it: `file.py move "<file>" "<target path>"`.
+6. **Citation.** `scripts/records/citation.py <tree> create --source S --field Name=Value ...
+   --text-file FILE` under the record type's source (table), with the source's template fields:
+   template 6 AccessDate (from step 5, e.g. "3 June 2021"), SpecificItem and Citing; free-form
+   sources Page (G1, G20, G24). The forms are in the "Citation forms" table
+   (`.claude/skills/rm-evaluate-source/source_types.md`). Transcription in the layout of the
+   existing ones (G10, "Key: value" lines; the file in `tmp/`). FreeBMD citations end with the
+   FreeBMD citation link (CLAUDE.md), which the user supplies. Check it:
+   `scripts/citations/evaluate_citation.py <tree> --citation C` shows no flags.
+7. **Links and facts.** Link the citation to each fact the record supports, with its rating:
+   `scripts/records/citation_link.py <tree> create --citation C --owner event:E --quality XYZ`
+   (`family:F`, `name:N`). The facts and ratings are in `rm-evaluate-links/facts_cited.md` and
+   `rm-evaluate-quality/quality.md`. A fact the person does not have is created from the record
+   (G8): `scripts/records/event.py <tree> create --owner person:P --type N --date RM_DATE
+   [--place L --site L]` (place details under G21: `scripts/records/place.py create --master`); a
+   new person named with a stated relationship is added under G29/G35 (rm-add-people:
+   `person.py`, `family.py`, `name.py`). Census: one citation per household, cited on every
+   member's facts; the couple's Marriage under G38/G39. Disagreements with the tree get a note on
+   the event (G37, `event.py edit E --set Note=...`); a disagreement the standards do not settle is
+   a question for the user. Check: `scripts/citations/evaluate_links.py <tree> --citation C` and
+   `evaluate_quality.py <tree> --citation C` show no flags.
+8. **Scan.** `scripts/records/media.py <tree> create --path "<new path>" --link citation:C
+   --set Caption="..." --set RefNumber="..." --set Description="..." --date RM_DATE` (a JPEG
+   thumbnail is made for images; PDFs are stored as File). Another copy of a record already in the
+   tree (G12), or a file already in a media row: `media.py <tree> edit M --link citation:C`. Media
+   details (scan forms in `rm-evaluate-scans/scan_forms.md`): Caption
    "Surname, Given – <record type> – <date>" (census: the head's name), RefNumber the official
-   reference, Description the entry summary then where the image came from, Date and SortDate
-   from the fact.
+   reference, Description the entry summary then where the image came from, Date from the fact.
+   Check: `scripts/media/evaluate_scans.py <tree> --citation C` shows no flags.
 9. **Apply and push.** Each write: dry run, check it against the standards, apply, read back.
    Then `working_copy.py push`. A refused push (RootsMagic saved the test tree): fetch again,
    re-run, push (rm-record-cleanup step 0).
 10. **Missing lists.** Run the rm-missing-records skill again with the degree shown in the header
     of `notes/missing/missing_censuses.md`, so the item drops out.
 11. **Report.** One short table: file (new name and folder), citation, facts linked with ratings,
-    new facts or people, renamed files. Then any question the standards did not settle.
+    new facts or people, renamed files. Then any question the standards did not settle; an issue
+    left open becomes a task linked to the person (`scripts/records/task.py <tree> create --name
+    ... --details ... --person P`).
 
 ## Folders, names and sources by record type
 

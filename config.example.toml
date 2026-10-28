@@ -1,4 +1,4 @@
-# Settings for scripts/check.py and other scripts.
+# Settings for the scripts (validate/, media/, files/ and others).
 # Copy to config.toml (git-ignored) and edit; scripts use config.toml if it
 # exists, otherwise this file.
 

@@ -66,7 +66,7 @@ three phases:
   have no citation (e.g. attached straight to a fact or person). They are part of the work (user's
   rule, 2026-10-21).
 - Records without scans: the user may hold paper copies. If asked, set the citation note
-  "No scan; paper copy held." (`scripts/citations/set_citation_note.py`).
+  "No scan; paper copy held." (`scripts/records/citation.py <tree> edit ID --set Comments="..."`).
 - Issues the user hands to RootsMagic tasks are out of scope for the clean-up.
 
 ## 3. Read every record
@@ -125,16 +125,39 @@ Office, Southport". RootsMagic adds Page to both footnotes.
 
 ## 5. Changes (dry run, apply; no confirmation)
 
+Each item below has a sub-skill that flags with a script and fixes with the `scripts/records/` and
+`scripts/files/` scripts (added 2026-10-28; their tables are drafts):
+
+| Item | Sub-skill |
+|---|---|
+| 1. Source | rm-evaluate-source |
+| 2. Citations | rm-evaluate-citation |
+| 3. Links; 4. New facts | rm-evaluate-links |
+| 5. New people | rm-add-people |
+| 6. Record events | rm-remove-record-events |
+| 7. Places | rm-evaluate-places |
+| 8. Scans | rm-evaluate-scans |
+| 9. Quality | rm-evaluate-quality |
+| 10. Open issues | the last step of each sub-skill |
+
+How the sub-skills fit the three phases of this skill:
+
+1. In step 4, for the current source, run steps 1-3 of each sub-skill in the table's order (flag,
+   review, decisions), so every question is asked before any change.
+2. In this step, run step 4 (fixes) of each sub-skill in the table's order. Before each, re-run its
+   flagging script: earlier fixes (merged citations, new facts) change what it finds. A flag the
+   recorded decisions cover is fixed without asking; one they do not cover is an issue for the end.
+3. Each sub-skill's last step (re-check and issues) then step 6 below.
+
 Every change: a script with a dry run, checked against the decisions, then applied in one
 transaction to the working copy; then read back, copy over the test tree, compare hashes.
 Do not stop to show dry runs or ask for approval; the reports stay in `tmp/output/<folder>/`.
 Records a dry run cannot handle under the decisions are left unchanged and noted as issues.
 A problem with the write itself (the dry run fails or refuses, or its counts do not match the
 decisions after the script is corrected) stops the work: report it and wait (CLAUDE.md).
-Generic scripts go in `scripts/<folder>/` with tests; scripts holding real values go in
-`notes/one_off/`. Reuse existing scripts where they fit (`scripts/citations/`,
-`scripts/sources/`, `scripts/media/`, `scripts/places/`, `scripts/tasks/`). Helper scripts
-useful beyond one task go in the repo with a test (CLAUDE.md).
+The writes go through `scripts/records/` (rows) and `scripts/files/` (files); a bulk change no
+generic script covers gets a script: generic ones in `scripts/<folder>/` with tests, ones holding
+real values in `notes/one_off/` (CLAUDE.md).
 
 After each apply, tick the step under "Progress" in `notes/issues/<type>_issues.md` and add any new
 issue straight away, so the work can be picked up if the session ends.
@@ -142,34 +165,11 @@ issue straight away, so the work can be picked up if the session ends.
 After each dry run, check its counts against every recorded decision. A record that a decision
 covers but the script missed is a bug to fix before applying, not a new question.
 
-1. Source: rename, template, fields (`rmutils.fields_blob`, no declaration), clear stray text.
-2. Citations: keep one per record; delete duplicates with their citation and media links;
-   correct fields; rebuild CitationName (template citation fields joined with "; ", or the Page
-   text for free-form); add transcriptions; FreeBMD citations end with the FreeBMD link.
-3. Links: add citation links to each supported fact (Quality `~~~` until rated).
-4. New facts (Occupation 26, Residence 29, ...): Date in RootsMagic format, SortDate from
-   `rmutils.sort_date`, PlaceID + SiteID, IsPrimary 1 if the person has no other fact of
-   that type.
-5. New people: PersonTable (UniqueID = 32 hex + checksum, Sex 0 male / 1 female, ParentID,
-   SpouseID), NameTable (SortDate 9223372036854775807, SurnameMP/GivenMP = names),
-   FamilyTable, ChildTable; set the child's ParentID. Copy the newest rows made in RootsMagic.
-6. Record events: delete them and their citation links, after their date, place and notes
-   are on the facts.
-7. Places: put the address (place detail, G21) on the main fact and new Residence facts.
-   Rename, merge or delete places with `scripts/places/` (rename_place, merge_places,
-   delete_place); `check.py` lists unused places and near-identical details.
-8. Scans: one link to the kept citation; Caption "Surname, Given – <record type> – <date>",
-   RefNumber the official reference (index: "YYYY Qn District Volume Page"; certificate: its
-   number), Description the entry summary then where the image came from, Date and SortDate
-   from the fact.
-9. Quality: set per link type once agreed.
-10. Open issues: a RootsMagic task linked to the person (`scripts/tasks/create_task.py`), a
-    note on the affected citations, and a row in `notes/issues/<type>_issues.md`.
-
 ## 6. Check and finish
 
-1. After each apply, re-run the dry run (it should show nothing left to do) and check links,
-   new rows and that no citation link points to a missing event or citation.
+1. After each apply, re-run the dry run (it should show nothing left to do). At the end, re-run each
+   sub-skill's flagging script on the source (each flag left is a recorded decision or an issue)
+   and the rm-check skill's validation scripts (no link or row pointing to a missing record).
 2. Report what was done (one short table per source), then the issues, one at a time.
 3. Optional (user's rule, 2026-10-20): the user may open the test tree in RootsMagic, run rebuild
    indexes and test database integrity, and check a footnote and the changed people. Not a step
